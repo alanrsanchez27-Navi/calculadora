@@ -1,0 +1,495 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lumelle Calculadora de Precios</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Quicksand:wght@500;600;700&display=swap">
+<style>
+/* Layout: herramienta de trabajo en dos columnas: datos a la izquierda, resultado fijo a la derecha. Tema único con la paleta de la marca. */
+:root{
+  --ciruela:#5D1E39; --crema:#F7F1E6; --papel:#FFFDF9; --rosa:#D7999A; --lila:#B298B5; --manteca:#DEB772; --salvia:#797F63;
+  --texto2:#6E4A57; --linea:#E3D5C8; --ok:#3F6B3A; --mal:#A3342E;
+  --display:"Chewy","Comic Sans MS",system-ui,sans-serif;
+  --body:"Quicksand","Avenir Next","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--crema);color:var(--ciruela);font-family:var(--body);font-weight:500;font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px;margin-bottom:24px}
+h1{font-family:var(--display);font-weight:400;font-size:42px;line-height:1;margin:0}
+header p{margin:6px 0 0;color:var(--texto2)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}
+.card{min-width:0;background:var(--papel);border-radius:20px;padding:22px;border:1px solid var(--linea)}
+.card+.card{margin-top:20px}
+h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0 0 4px}
+.hint{color:var(--texto2);font-size:13px;margin:0 0 14px}
+label{font-weight:700;font-size:13px}
+input,select{font:inherit;color:var(--ciruela);background:#fff;border:1.5px solid #D9C7B8;border-radius:10px;padding:8px 10px;min-height:40px;width:100%}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--manteca);outline-offset:1px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;text-align:left;color:var(--texto2);padding:6px 6px;border-bottom:1.5px solid var(--linea);white-space:nowrap}
+td{padding:6px;border-bottom:1px solid #EFE5DA;vertical-align:middle}
+td.num{text-align:right;white-space:nowrap;font-weight:700}
+td input{min-width:70px}
+td input.nombre{min-width:150px}
+.btn{font:inherit;font-weight:700;border-radius:999px;padding:10px 18px;min-height:44px;cursor:pointer;border:1.5px solid var(--ciruela)}
+.btn.pri{background:var(--ciruela);color:var(--crema)}
+.btn.sec{background:transparent;color:var(--ciruela)}
+.btn.x{border:0;background:transparent;color:var(--texto2);min-height:36px;padding:6px 10px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+.fields>div{display:flex;flex-direction:column;gap:6px}
+.res{position:sticky;top:max(16px,env(safe-area-inset-top,0px))}
+.res .big{font-family:var(--display);font-size:48px;line-height:1;margin:6px 0 2px}
+.res dl{display:grid;grid-template-columns:1fr auto;gap:8px 12px;margin:16px 0 0;font-variant-numeric:tabular-nums}
+.res dt{color:var(--texto2)}
+.res dd{margin:0;text-align:right;font-weight:700}
+.res .sep{grid-column:1/-1;border-top:1.5px solid var(--linea);margin:4px 0}
+.canal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.canal div{background:var(--crema);border-radius:14px;padding:12px}
+.canal b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--texto2)}
+.canal span{font-size:22px;font-weight:700}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px}
+.pill.ok{background:#E3EEDC;color:var(--ok)}.pill.mal{background:#F6DEDB;color:var(--mal)}
+.ej{background:var(--manteca);color:var(--ciruela);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:20px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.tab{font:inherit;font-weight:700;border-radius:999px;padding:10px 20px;min-height:44px;cursor:pointer;border:1.5px solid var(--ciruela);background:transparent;color:var(--ciruela)}
+.tab[aria-selected="true"]{background:var(--ciruela);color:var(--crema)}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.res{position:static}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <div><h1>Calculadora de precios</h1><p>Cuánto cuesta hacer cada vela y a cuánto venderla.</p></div>
+  </header>
+
+  <div class="ej" id="aviso">Los precios cargados son de ejemplo para que veas cómo funciona. Reemplazalos por los tuyos.</div>
+
+  <div class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab" role="tab" id="tab-precio" aria-controls="panel-precio" aria-selected="true">Calcular precio</button>
+    <button class="tab" role="tab" id="tab-extras" aria-controls="panel-extras" aria-selected="false">Más herramientas</button>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div id="panel-precio" role="tabpanel" aria-labelledby="tab-precio">
+      <section class="card">
+        <h2>1. Insumos</h2>
+        <p class="hint">Cargá lo que pagás por cada insumo y cuánto trae el paquete. La calculadora saca el costo por gramo, ml o unidad. Cuando cambiás un precio, se guarda la fecha; si pasó más de un mes, se marca en rojo.</p>
+        <p id="avisoViejos" class="pill mal" style="display:block;border-radius:12px;padding:10px 14px;margin:0 0 14px" hidden></p>
+        <div class="tbl"><table id="tInsumos">
+          <thead><tr><th>Insumo</th><th>Trae</th><th>Unidad</th><th>Precio pagado ($)</th><th style="text-align:right">Costo por unidad</th><th>Precio al</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="row"><button class="btn sec" id="addInsumo">Agregar insumo</button></div>
+      </section>
+
+      <section class="card">
+        <h2>2. La vela</h2>
+        <p class="hint">Elegí cuánto de cada insumo lleva una vela.</p>
+        <div class="fields" style="margin-bottom:14px">
+          <div><label for="nombreVela">Nombre de la vela</label><input id="nombreVela" value="Frutilla con crema"></div>
+        </div>
+        <div class="tbl"><table id="tReceta">
+          <thead><tr><th>Insumo</th><th>Cantidad que usa</th><th style="text-align:right">Costo</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="row"><button class="btn sec" id="addLinea">Agregar a la vela</button></div>
+      </section>
+
+      <section class="card">
+        <h2>3. Gastos fijos del mes</h2>
+        <p class="hint">Lo que pagás todos los meses, vendas mucho o poco. En "% para Lumelle" poné qué parte de ese gasto es del negocio (internet de la casa, por ejemplo, un 20 %). Los insumos de cada vela no van acá.</p>
+        <div class="tbl"><table id="tFijos">
+          <thead><tr><th>Gasto</th><th>Monto por mes ($)</th><th>% para Lumelle</th><th style="text-align:right">Le toca a Lumelle</th><th></th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td colspan="3" style="padding-top:10px;font-weight:700">Total por mes</td><td class="num" id="fijosMes" style="padding-top:10px">$0</td><td></td></tr></tfoot>
+        </table></div>
+        <div class="row"><button class="btn sec" id="addFijo">Agregar gasto</button></div>
+        <div class="fields" style="margin-top:16px">
+          <div><label for="velasMes">Velas que hacen por mes</label><input id="velasMes" type="number" min="1" step="1" value="50"></div>
+          <div><label for="fijos">Gastos fijos por vela ($)</label><input id="fijos" type="number" readonly value="0" style="background:var(--crema);font-weight:700"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>4. Tu trabajo</h2>
+        <p class="hint">Tu tiempo también se cobra. Valor de la hora = lo que querés ganar por mes ÷ horas que trabajás por mes (horas por semana × 4). Contá todas las horas: hacer velas, comprar, sacar fotos, responder mensajes y armar envíos.</p>
+        <div class="fields">
+          <div><label for="sueldo">Cuánto querés ganar por mes ($)</label><input id="sueldo" type="number" min="0" step="1000" value="400000"></div>
+          <div><label for="horasSem">Horas por semana</label><input id="horasSem" type="number" min="1" step="1" value="10"></div>
+          <div><label for="valorHora">Valor de tu hora ($)</label><input id="valorHora" type="number" readonly value="0" style="background:var(--crema);font-weight:700"></div>
+        </div>
+        <div class="fields" style="margin-top:14px">
+          <div><label for="minutos">Minutos por vela</label><input id="minutos" type="number" min="0" step="1" value="30"></div>
+          <div><label for="merma">Merma de insumos (%)</label><input id="merma" type="number" min="0" max="50" step="1" value="5"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>5. Precio</h2>
+        <p class="hint">Margen = qué parte del precio final te queda como ganancia. La comisión es lo que cobra la plataforma de pago o la tienda online.</p>
+        <div class="fields">
+          <div><label for="margen">Margen de ganancia (%)</label><input id="margen" type="number" min="0" max="90" step="1" value="40"></div>
+          <div><label for="comision">Comisión tienda online (%)</label><input id="comision" type="number" min="0" max="40" step="0.1" value="7"></div>
+          <div><label for="redondeo">Redondear a</label><select id="redondeo"><option value="1">Sin redondear</option><option value="100">$100</option><option value="500" selected>$500</option><option value="1000">$1.000</option></select></div>
+        </div>
+        <div class="row"><button class="btn pri" id="guardar">Guardar esta vela</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Velas guardadas</h2>
+        <p class="hint">Se guardan en este navegador. Tocá una para volver a abrirla.</p>
+        <div class="tbl"><table id="tGuardadas">
+          <thead><tr><th>Vela</th><th style="text-align:right">Costo</th><th style="text-align:right">Precio</th><th style="text-align:right">Ganancia</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+      </div>
+
+      <div id="panel-extras" role="tabpanel" aria-labelledby="tab-extras" hidden>
+      <section class="card">
+        <h2>Punto de equilibrio</h2>
+        <p class="hint">Cuántas velas tienen que vender por mes para pagar los gastos fijos y los sueldos, con el precio sugerido de la vela abierta.</p>
+        <div class="fields">
+          <div><label for="personas">Personas que cobran sueldo</label><input id="personas" type="number" min="1" step="1" value="2"></div>
+        </div>
+        <dl class="kv" style="display:grid;grid-template-columns:1fr auto;gap:8px 12px;margin:16px 0 0;font-variant-numeric:tabular-nums">
+          <dt style="color:var(--texto2)">Hay que cubrir por mes (gastos fijos + sueldos)</dt><dd style="margin:0;text-align:right;font-weight:700" id="eNecesario">$0</dd>
+          <dt style="color:var(--texto2)">Lo que deja cada vela, descontando insumos y comisión</dt><dd style="margin:0;text-align:right;font-weight:700" id="eAporte">$0</dd>
+        </dl>
+        <div class="canal">
+          <div><b>Velas por mes vendiendo online</b><span id="eOnline">0</span></div>
+          <div><b>Velas por mes por WhatsApp</b><span id="eDirecta">0</span></div>
+        </div>
+        <p id="eMsg" class="hint" style="margin:12px 0 0"></p>
+      </section>
+
+      <section class="card">
+        <h2>Promos y cuotas</h2>
+        <p class="hint">Probá un descuento antes de anunciarlo. En cuotas sin interés, la plataforma de pago te descuenta un costo; consultá el porcentaje real en la que uses.</p>
+        <div class="fields">
+          <div><label for="descuento">Descuento (%)</label><input id="descuento" type="number" min="0" max="90" step="1" value="10"></div>
+          <div><label for="cuotas">Costo de cuotas sin interés (%)</label><input id="cuotas" type="number" min="0" max="50" step="0.5" value="0"></div>
+        </div>
+        <div class="row" role="group" aria-label="Promos rápidas">
+          <button class="btn sec promo" data-d="10">10 % off</button>
+          <button class="btn sec promo" data-d="20">20 % off</button>
+          <button class="btn sec promo" data-d="50">2x1</button>
+        </div>
+        <div class="canal">
+          <div><b>Precio con promo</b><span id="pPrecio">$0</span></div>
+          <div><b>Ganancia por vela online</b><span id="pGanOnline">$0</span></div>
+          <div><b>Ganancia por WhatsApp</b><span id="pGanDirecta">$0</span></div>
+          <div><b>Estado</b><span id="pEstado" class="pill ok" style="font-size:13px">Ok</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Lista de compras</h2>
+        <p class="hint">Poné cuánto lleva cada vela de cada insumo y cuántas velas van a hacer. La página calcula cuánto necesitan en total, cuántos paquetes comprar y cuánto van a gastar. Ya suma la merma.</p>
+        <div class="fields" style="margin-bottom:14px">
+          <div><label for="tanda">Cuántas velas van a hacer</label><input id="tanda" type="number" min="1" step="1" value="20"></div>
+        </div>
+        <div class="tbl"><table id="tCompras">
+          <thead><tr><th>Insumo</th><th>Por vela</th><th style="text-align:right">Necesitan en total</th><th style="text-align:right">Paquetes a comprar</th><th style="text-align:right">Cuesta</th><th></th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td colspan="4" style="padding-top:10px;font-weight:700">Total a invertir</td><td class="num" id="cTotal" style="padding-top:10px">$0</td><td></td></tr></tfoot>
+        </table></div>
+        <div class="row">
+          <button class="btn sec" id="addCompra">Agregar insumo</button>
+          <button class="btn sec" id="copiarReceta">Copiar cantidades de la vela abierta</button>
+        </div>
+      </section>
+
+      </div>
+    </div>
+
+    <aside class="card res" aria-live="polite">
+      <h2 id="rNombre">Frutilla con crema</h2>
+      <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--texto2)">Precio sugerido</span>
+      <div class="big" id="rPrecio">$0</div>
+      <span id="rEstado" class="pill ok">Margen ok</span>
+      <dl>
+        <dt>Insumos</dt><dd id="rInsumos">$0</dd>
+        <dt>Merma</dt><dd id="rMerma">$0</dd>
+        <dt>Mano de obra</dt><dd id="rObra">$0</dd>
+        <dt>Gastos fijos</dt><dd id="rFijos">$0</dd>
+        <div class="sep"></div>
+        <dt><b>Costo total</b></dt><dd id="rCosto">$0</dd>
+      </dl>
+      <div class="canal">
+        <div><b>Ganancia por WhatsApp</b><span id="rGanDirecta">$0</span></div>
+        <div><b>Ganancia tienda online</b><span id="rGanOnline">$0</span></div>
+      </div>
+      <p class="hint" style="margin:14px 0 0">Por WhatsApp no hay comisión si te pagan por transferencia, por eso ganás un poco más.</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+const KEY = 'lumelle-calc-v1';
+
+const ejemplo = {
+  insumos: [
+    { id: 'i1', nombre: 'Cera de soja', trae: 1000, unidad: 'g', precio: 9000 },
+    { id: 'i2', nombre: 'Esencia aromática', trae: 100, unidad: 'ml', precio: 6000 },
+    { id: 'i3', nombre: 'Mecha de algodón', trae: 50, unidad: 'u', precio: 5000 },
+    { id: 'i4', nombre: 'Frasco de vidrio', trae: 12, unidad: 'u', precio: 18000 },
+    { id: 'i5', nombre: 'Colorante', trae: 10, unidad: 'g', precio: 3000 },
+    { id: 'i6', nombre: 'Caja de cartón', trae: 25, unidad: 'u', precio: 15000 },
+    { id: 'i7', nombre: 'Etiqueta y tarjeta', trae: 50, unidad: 'u', precio: 10000 }
+  ],
+  receta: [
+    { insumo: 'i1', cant: 180 }, { insumo: 'i2', cant: 12 }, { insumo: 'i3', cant: 1 },
+    { insumo: 'i4', cant: 1 }, { insumo: 'i5', cant: 0.5 }, { insumo: 'i6', cant: 1 }, { insumo: 'i7', cant: 1 }
+  ],
+  guardadas: []
+};
+const fijosIniciales = [
+  { nombre: 'Monotributo', monto: 50000, pct: 100 },
+  { nombre: 'Internet', monto: 26000, pct: 20 },
+  { nombre: 'Gas y luz', monto: 6000, pct: 100 },
+  { nombre: 'Tienda online', monto: 0, pct: 100 },
+  { nombre: 'Publicidad', monto: 0, pct: 100 }
+];
+
+let st;
+try { st = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { st = null; }
+if (!st) st = JSON.parse(JSON.stringify(ejemplo)); else $('aviso').hidden = true;
+if (!st.compras) st.compras = st.receta.map((r) => ({ insumo: r.insumo, cant: r.cant }));
+if (!st.fijosMes) st.fijosMes = JSON.parse(JSON.stringify(fijosIniciales));
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
+const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : 0; };
+const unit = (i) => (i.trae > 0 ? i.precio / i.trae : 0);
+let uid = Date.now();
+const hoy = () => new Date().toISOString().slice(0, 10);
+const dias = (f) => f ? Math.floor((Date.now() - new Date(f + 'T00:00:00').getTime()) / 86400000) : Infinity;
+if (!st.inicializado) { st.insumos.forEach((i) => { if (!i.fecha) i.fecha = hoy(); }); st.inicializado = true; }
+function fechaHtml(i) {
+  if (!i.fecha) return '<span class="pill mal">Sin fecha</span>';
+  const [y, m, d] = i.fecha.split('-');
+  const viejo = dias(i.fecha) > 30;
+  return `<span class="pill ${viejo ? 'mal' : 'ok'}" title="${viejo ? 'Hace más de un mes: revisá el precio' : 'Precio al día'}">${d}/${m}/${y.slice(2)}</span>`;
+}
+function avisoViejos() {
+  const v = st.insumos.filter((i) => dias(i.fecha) > 30).length;
+  const a = $('avisoViejos');
+  a.hidden = v === 0;
+  a.textContent = v === 1 ? 'Hay 1 insumo con el precio cargado hace más de un mes. Revisalo antes de calcular.' : `Hay ${v} insumos con el precio cargado hace más de un mes. Revisalos antes de calcular.`;
+}
+
+function renderInsumos() {
+  const tb = $('tInsumos').tBodies[0]; tb.innerHTML = '';
+  st.insumos.forEach((i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input class="nombre" aria-label="Insumo" value="${i.nombre.replace(/"/g,'&quot;')}"></td>
+      <td><input type="number" min="0" step="any" aria-label="Cantidad que trae" value="${i.trae}"></td>
+      <td><select aria-label="Unidad"><option value="g">g</option><option value="ml">ml</option><option value="u">unidad</option></select></td>
+      <td><input type="number" min="0" step="any" aria-label="Precio pagado" value="${i.precio}"></td>
+      <td class="num">${fmt(unit(i))} <span style="font-weight:500;color:var(--texto2)">/ ${i.unidad === 'u' ? 'u' : i.unidad}</span></td>
+      <td class="fecha" style="white-space:nowrap">${fechaHtml(i)}</td>
+      <td><button class="btn x" aria-label="Quitar ${i.nombre}">Quitar</button></td>`;
+    const [n, t, u, p] = tr.querySelectorAll('input,select');
+    u.value = i.unidad;
+    n.oninput = () => { i.nombre = n.value; renderReceta(); calc(); };
+    t.oninput = () => { i.trae = num(t.value); tr.querySelector('.num').firstChild.textContent = fmt(unit(i)) + ' '; calc(); };
+    p.oninput = () => { i.precio = num(p.value); i.fecha = hoy(); tr.querySelector('.fecha').innerHTML = fechaHtml(i); avisoViejos(); tr.querySelector('.num').firstChild.textContent = fmt(unit(i)) + ' '; calc(); };
+    u.onchange = () => { i.unidad = u.value; renderInsumos(); renderReceta(); calc(); };
+    tr.querySelector('.btn.x').onclick = () => { st.insumos = st.insumos.filter((x) => x !== i); st.receta = st.receta.filter((r) => r.insumo !== i.id); renderInsumos(); renderReceta(); calc(); };
+    tb.appendChild(tr);
+  });
+}
+
+function renderReceta() {
+  const tb = $('tReceta').tBodies[0]; tb.innerHTML = '';
+  st.receta.forEach((r) => {
+    const tr = document.createElement('tr');
+    const opts = st.insumos.map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
+    const ins = st.insumos.find((i) => i.id === r.insumo);
+    tr.innerHTML = `<td><select aria-label="Insumo">${opts}</select></td>
+      <td style="display:flex;align-items:center;gap:8px"><input type="number" min="0" step="any" aria-label="Cantidad que usa" value="${r.cant}"><span style="color:var(--texto2)">${ins ? (ins.unidad === 'u' ? 'u' : ins.unidad) : ''}</span></td>
+      <td class="num">${fmt(ins ? unit(ins) * r.cant : 0)}</td>
+      <td><button class="btn x" aria-label="Quitar de la vela">Quitar</button></td>`;
+    const s = tr.querySelector('select'), c = tr.querySelector('input');
+    s.value = r.insumo;
+    s.onchange = () => { r.insumo = s.value; renderReceta(); calc(); };
+    c.oninput = () => { r.cant = num(c.value); const i = st.insumos.find((x) => x.id === r.insumo); tr.querySelector('.num').textContent = fmt(i ? unit(i) * r.cant : 0); calc(); };
+    tr.querySelector('.btn.x').onclick = () => { st.receta = st.receta.filter((x) => x !== r); renderReceta(); calc(); };
+    tb.appendChild(tr);
+  });
+}
+
+function actualizarHora() {
+  const h = num($('horasSem').value) * 4;
+  $('valorHora').value = h > 0 ? Math.round(num($('sueldo').value) / h) : 0;
+}
+function totalFijos() { return st.fijosMes.reduce((s, f) => s + f.monto * f.pct / 100, 0); }
+function actualizarFijos() {
+  const tot = totalFijos();
+  $('fijosMes').textContent = fmt(tot);
+  const v = num($('velasMes').value);
+  $('fijos').value = v > 0 ? Math.round(tot / v) : 0;
+}
+function renderFijos() {
+  const tb = $('tFijos').tBodies[0]; tb.innerHTML = '';
+  st.fijosMes.forEach((f) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input class="nombre" aria-label="Gasto" value="${f.nombre.replace(/"/g,'&quot;')}"></td>
+      <td><input type="number" min="0" step="any" aria-label="Monto por mes" value="${f.monto}"></td>
+      <td><input type="number" min="0" max="100" step="1" aria-label="Porcentaje para Lumelle" value="${f.pct}"></td>
+      <td class="num">${fmt(f.monto * f.pct / 100)}</td>
+      <td><button class="btn x" aria-label="Quitar ${f.nombre}">Quitar</button></td>`;
+    const [n, m, p] = tr.querySelectorAll('input');
+    const upd = () => { tr.querySelector('.num').textContent = fmt(f.monto * f.pct / 100); actualizarFijos(); calc(); };
+    n.oninput = () => { f.nombre = n.value; save(); };
+    m.oninput = () => { f.monto = num(m.value); upd(); };
+    p.oninput = () => { f.pct = Math.min(100, num(p.value)); upd(); };
+    tr.querySelector('.btn.x').onclick = () => { st.fijosMes = st.fijosMes.filter((x) => x !== f); renderFijos(); actualizarFijos(); calc(); };
+    tb.appendChild(tr);
+  });
+}
+
+function resultado() {
+  const ins = st.receta.reduce((s, r) => { const i = st.insumos.find((x) => x.id === r.insumo); return s + (i ? unit(i) * r.cant : 0); }, 0);
+  const merma = ins * num($('merma').value) / 100;
+  const obra = num($('minutos').value) / 60 * num($('valorHora').value);
+  const fijos = num($('fijos').value);
+  const costo = ins + merma + obra + fijos;
+  const m = num($('margen').value) / 100, c = num($('comision').value) / 100;
+  const div = 1 - m - c;
+  const r = num($('redondeo').value) || 1;
+  const precio = div > 0 ? Math.ceil(costo / div / r) * r : 0;
+  return { ins, merma, obra, fijos, costo, precio, valido: div > 0, ganDirecta: precio - costo, ganOnline: precio * (1 - c) - costo };
+}
+
+function extras(r) {
+  const c = num($('comision').value) / 100;
+  const mat = r.ins + r.merma;
+  // Punto de equilibrio
+  const necesario = totalFijos() + num($('sueldo').value) * Math.max(1, num($('personas').value));
+  const aporteOn = r.precio * (1 - c) - mat, aporteDir = r.precio - mat;
+  $('eNecesario').textContent = fmt(necesario);
+  $('eAporte').textContent = fmt(aporteOn) + ' online · ' + fmt(aporteDir) + ' WhatsApp';
+  const vOn = aporteOn > 0 ? Math.ceil(necesario / aporteOn) : Infinity, vDir = aporteDir > 0 ? Math.ceil(necesario / aporteDir) : Infinity;
+  $('eOnline').textContent = isFinite(vOn) ? vOn : '—';
+  $('eDirecta').textContent = isFinite(vDir) ? vDir : '—';
+  const plan = num($('velasMes').value);
+  $('eMsg').textContent = !isFinite(vOn) ? 'Con este precio ninguna cantidad alcanza: subí el precio o bajá costos.'
+    : plan >= vOn ? `Con las ${plan} velas por mes que planean hacer, cubren todo y les sobra.`
+    : `Planean hacer ${plan} velas por mes: les faltan ${vOn - plan} para cubrir todo vendiendo online.`;
+  // Promos
+  const d = num($('descuento').value) / 100, q = num($('cuotas').value) / 100;
+  const pp = r.precio * (1 - d);
+  const gOn = pp * (1 - c - q) - r.costo, gDir = pp - r.costo;
+  $('pPrecio').textContent = fmt(pp); $('pGanOnline').textContent = fmt(gOn); $('pGanDirecta').textContent = fmt(gDir);
+  const pe = $('pEstado');
+  if (gOn < 0 && gDir < 0) { pe.className = 'pill mal'; pe.textContent = 'Perdés plata'; }
+  else if (gOn < 0) { pe.className = 'pill mal'; pe.textContent = 'Online perdés plata'; }
+  else { pe.className = 'pill ok'; pe.textContent = 'Te sigue dejando ganancia'; }
+  actualizarCompras();
+}
+
+const filas = new WeakMap();
+function renderCompras() {
+  const tb = $('tCompras').tBodies[0]; tb.innerHTML = '';
+  st.compras.forEach((c) => {
+    const tr = document.createElement('tr');
+    const opts = st.insumos.map((i) => `<option value="${i.id}">${i.nombre.replace(/</g,'&lt;')}</option>`).join('');
+    tr.innerHTML = `<td><select aria-label="Insumo">${opts}</select></td>
+      <td style="display:flex;align-items:center;gap:8px"><input type="number" min="0" step="any" aria-label="Cantidad por vela" value="${c.cant}"><span class="u" style="color:var(--texto2)"></span></td>
+      <td class="num need"></td><td class="num paq"></td><td class="num cost"></td>
+      <td><button class="btn x" aria-label="Quitar de la lista">Quitar</button></td>`;
+    const s = tr.querySelector('select'), inp = tr.querySelector('input');
+    s.value = c.insumo;
+    s.onchange = () => { c.insumo = s.value; actualizarCompras(); save(); };
+    inp.oninput = () => { c.cant = num(inp.value); actualizarCompras(); save(); };
+    tr.querySelector('.btn.x').onclick = () => { st.compras = st.compras.filter((x) => x !== c); renderCompras(); actualizarCompras(); save(); };
+    filas.set(c, tr);
+    tb.appendChild(tr);
+  });
+}
+
+function actualizarCompras() {
+  const n = Math.max(0, num($('tanda').value)), mm = 1 + num($('merma').value) / 100;
+  let total = 0;
+  st.compras.forEach((c) => {
+    const tr = filas.get(c); if (!tr) return;
+    const i = st.insumos.find((x) => x.id === c.insumo);
+    if (!i) { tr.querySelector('.need').textContent = '—'; tr.querySelector('.paq').textContent = '—'; tr.querySelector('.cost').textContent = '—'; return; }
+    const u = i.unidad === 'u' ? 'u' : i.unidad;
+    const need = c.cant * n * mm;
+    const paq = i.trae > 0 ? Math.ceil(need / i.trae - 1e-9) : 0;
+    const cost = paq * i.precio; total += cost;
+    tr.querySelector('.u').textContent = u;
+    tr.querySelector('.need').textContent = (Math.round(need * 10) / 10).toLocaleString('es-AR') + ' ' + u;
+    tr.querySelector('.paq').textContent = paq + ' de ' + i.trae.toLocaleString('es-AR') + ' ' + u;
+    tr.querySelector('.cost').textContent = fmt(cost);
+  });
+  $('cTotal').textContent = fmt(total);
+}
+
+function calc() {
+  const r = resultado();
+  $('rNombre').textContent = $('nombreVela').value || 'Vela sin nombre';
+  $('rInsumos').textContent = fmt(r.ins); $('rMerma').textContent = fmt(r.merma);
+  $('rObra').textContent = fmt(r.obra); $('rFijos').textContent = fmt(r.fijos);
+  $('rCosto').textContent = fmt(r.costo);
+  $('rPrecio').textContent = r.valido ? fmt(r.precio) : '—';
+  $('rGanDirecta').textContent = fmt(r.ganDirecta); $('rGanOnline').textContent = fmt(r.ganOnline);
+  const e = $('rEstado');
+  if (!r.valido) { e.className = 'pill mal'; e.textContent = 'Margen + comisión no pueden sumar 100% o más'; }
+  else if (r.ganOnline <= 0) { e.className = 'pill mal'; e.textContent = 'Perdés plata en la tienda online'; }
+  else { e.className = 'pill ok'; e.textContent = 'Margen ok'; }
+  extras(r);
+  st.form = { personas: $('personas').value, descuento: $('descuento').value, cuotas: $('cuotas').value, tanda: $('tanda').value, nombre: $('nombreVela').value, velasMes: $('velasMes').value, sueldo: $('sueldo').value, horasSem: $('horasSem').value, minutos: $('minutos').value, valorHora: $('valorHora').value, fijos: $('fijos').value, merma: $('merma').value, margen: $('margen').value, comision: $('comision').value, redondeo: $('redondeo').value };
+  save();
+}
+
+function renderGuardadas() {
+  const tb = $('tGuardadas').tBodies[0]; tb.innerHTML = '';
+  if (!st.guardadas.length) { tb.innerHTML = '<tr><td colspan="5" style="color:var(--texto2);padding:14px 6px">Todavía no guardaste ninguna vela. Armá una arriba y tocá "Guardar esta vela".</td></tr>'; return; }
+  st.guardadas.forEach((g, k) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><button class="btn x" style="color:var(--ciruela);font-weight:700;padding-left:0">${g.form.nombre || 'Vela sin nombre'}</button></td><td class="num">${fmt(g.costo)}</td><td class="num">${fmt(g.precio)}</td><td class="num">${fmt(g.gan)}</td><td><button class="btn x" aria-label="Borrar">Borrar</button></td>`;
+    const [abrir, borrar] = tr.querySelectorAll('button');
+    abrir.onclick = () => { st.receta = JSON.parse(JSON.stringify(g.receta)); setForm(g.form); renderReceta(); calc(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    borrar.onclick = () => { st.guardadas.splice(k, 1); save(); renderGuardadas(); };
+    tb.appendChild(tr);
+  });
+}
+
+function setForm(f) { if (!f) return; $('nombreVela').value = f.nombre; ['personas','descuento','cuotas','tanda','velasMes','sueldo','horasSem','minutos','merma','margen','comision','redondeo'].forEach((k) => { if (f[k] !== undefined) $(k).value = f[k]; }); actualizarFijos(); actualizarHora(); }
+
+$('addInsumo').onclick = () => { st.insumos.push({ id: 'i' + (uid++), nombre: 'Nuevo insumo', trae: 1, unidad: 'u', precio: 0, fecha: hoy() }); renderInsumos(); renderReceta(); calc(); };
+$('addLinea').onclick = () => { if (!st.insumos.length) return; st.receta.push({ insumo: st.insumos[0].id, cant: 1 }); renderReceta(); calc(); };
+$('guardar').onclick = () => {
+  const r = resultado(); calc();
+  const nombre = st.form.nombre || 'Vela sin nombre';
+  const k = st.guardadas.findIndex((g) => g.form.nombre === nombre);
+  const item = { form: { ...st.form }, receta: JSON.parse(JSON.stringify(st.receta)), costo: r.costo, precio: r.precio, gan: r.ganOnline };
+  if (k >= 0) st.guardadas[k] = item; else st.guardadas.push(item);
+  save(); renderGuardadas(); $('guardar').textContent = 'Guardada'; setTimeout(() => $('guardar').textContent = 'Guardar esta vela', 1500);
+};
+$('addFijo').onclick = () => { st.fijosMes.push({ nombre: 'Nuevo gasto', monto: 0, pct: 100 }); renderFijos(); actualizarFijos(); calc(); };
+$('velasMes').addEventListener('input', () => { actualizarFijos(); calc(); });
+['sueldo','horasSem'].forEach((k) => $(k).addEventListener('input', () => { actualizarHora(); calc(); }));
+['personas','descuento','cuotas','tanda'].forEach((k) => $(k).addEventListener('input', calc));
+document.querySelectorAll('.promo').forEach((b) => b.addEventListener('click', () => { $('descuento').value = b.dataset.d; calc(); }));
+['nombreVela','minutos','valorHora','merma','margen','comision','redondeo'].forEach((k) => $(k).addEventListener('input', calc));
+
+
+$('addCompra').onclick = () => { if (!st.insumos.length) return; st.compras.push({ insumo: st.insumos[0].id, cant: 1 }); renderCompras(); actualizarCompras(); save(); };
+$('copiarReceta').onclick = () => { st.compras = st.receta.map((r) => ({ insumo: r.insumo, cant: r.cant })); renderCompras(); actualizarCompras(); save(); };
+const tabs = [['tab-precio','panel-precio'],['tab-extras','panel-extras']];
+function abrirTab(id) { if (id === 'tab-extras') { renderCompras(); actualizarCompras(); } tabs.forEach(([t, pn]) => { const on = t === id; $(t).setAttribute('aria-selected', on); $(pn).hidden = !on; }); try { localStorage.setItem('lumelle-calc-tab', id); } catch (e) {} }
+tabs.forEach(([t]) => $(t).addEventListener('click', () => abrirTab(t)));
+try { const t = localStorage.getItem('lumelle-calc-tab'); if (t && $(t)) abrirTab(t); } catch (e) {}
+renderCompras(); renderFijos(); actualizarFijos(); actualizarHora(); setForm(st.form); renderInsumos(); renderReceta(); renderGuardadas(); avisoViejos(); calc();
+</script>
+</body></html>
